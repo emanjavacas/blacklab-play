@@ -1,10 +1,4 @@
-# blacklab-play
-
-A Clojure library designed to ... well, that part is up to you.
-
-## Usage
-
-FIXME
+Playing around with BlackLab through Clojure
 
 ## License
 
