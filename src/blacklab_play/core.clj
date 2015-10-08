@@ -8,7 +8,7 @@
   (let [parsed-str (apply str (replace {\' \"} s))]
     (CorpusQueryLanguageParser/parse parsed-str)))
 
-(defn create-searcher ^Searcher [^String path]
+(defn create-searcher ^Searcher [^String path] ;closing
   (Searcher/open (java.io.File. path)))
 
 (defn run-query ^Hits [^Searcher searcher ^String s]
@@ -28,8 +28,9 @@
                 ^String left  (->txt (.left conc))
                 ^String match (->txt (.match conc))
                 ^String right (->txt (.right conc))]]
-    ; [doc start end left match right]
-      (format "[%05d %06d:%06d] %45s[%s]%s\n" doc start end left match right))))
+;      [doc start end left match right]
+      (format "[%05d %06d:%06d] %50s[%s]%s\n" doc start end left match right)
+      )))
 
 (defprotocol PaginateHits
   (^Integer get-current [this])
@@ -40,7 +41,7 @@
   (^HitsWindow prev-page! [this])
   (^HitsWindow nth-page! [this n]))
 
-(defrecord Paginator [hits init page-size]
+(defrecord Paginator [hits init page-size] ;private record
   PaginateHits
   (get-current [this] @init)
   (page-size! [this n] (ref-set page-size n))
@@ -64,7 +65,7 @@
   (nth-page! [this n]
     (dosync (.window hits (ref-set init (* n @page-size)) @page-size))))
 
-(defn paginate [^Hits hits page-size]
+(defn paginate [^Hits hits page-size] ;record constructor
   (let [current (ref 0) page-size (ref page-size)]
     (Paginator. hits current page-size)))
 
@@ -74,13 +75,15 @@
 (def brown-searcher 
   (create-searcher "resources/brown-index"))
 
-(def hits (run-query brown-searcher "'the'"))
+(def hits (run-query brown-searcher "'be' 'going' 'to' [pos='v.*']"))
+(def hits (run-query-safe brown-searcher "\"scheme\" \",\" \"add\""))
+(def hits (run-query brown-searcher "[punct=\" \\. \"]"))
 (def paginator (paginate hits 10))
+(doseq [hit (hits->txt (next-page! paginator))]
+  (println hit))
 
-;; (hits->txt (context-size! paginator 25))
-;; (hits->txt (nth-page! paginator 6990))
-;; (hits->txt (prev-page! paginator))
-
+(.getTokens (.getKwic hits (first (seq hits))) "word")
+;;; get doc info
 ;; (.stringValue (.getField (.document brown-searcher 499) "base"))
 ;; (doseq [field (.getFields (.document brown-searcher 499))]
-;;   (println (.stringValue field)))
+;;   (println (.stringValue field) (.name field)))
